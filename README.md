@@ -105,5 +105,5 @@ MIT License — free for personal or commercial use.
 ## 👤 Author
 
 **Butta Jones**  
-GitHub: [@buttajones](https://github.com/buttajones)
+GitHub: [@buttajones](https://github.com/buttajones)  
 Twitter/X: [@buttajones](https://twitter.com/buttajones)
