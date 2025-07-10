@@ -1,2 +1,3 @@
-Pillow
 plexapi
+Pillow
+requests
