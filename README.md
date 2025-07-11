@@ -2,7 +2,7 @@
 
 Automatically overlay a "New Season" banner on Plex show posters when a new season is added within the last 20 days. Features intelligent cleanup that automatically removes overlays when seasons are no longer "new".
 
-![Demo Image](https://via.placeholder.com/800x400/2e3440/88c0d0?text=Before+%26+After+Preview)
+![Demo Image](https://i.imgur.com/CmoZyQv.png)
 
 ---
 
