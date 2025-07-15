@@ -1,6 +1,6 @@
 # Plex New Season Overlay
 
-Automatically overlay a "New Season" banner on Plex show posters when a new season is added within the last 20 days. Features intelligent cleanup that automatically removes overlays when seasons are no longer "new".
+Automatically overlay a "New Season" banner on Plex show posters when a new season is added within the last 21 days. Features intelligent cleanup that automatically removes overlays when seasons are no longer "new" and smart processing that converts preview overlays to live overlays.
 
 <img src="https://i.imgur.com/5efMo58.jpg" width="300" />     <img src="https://i.imgur.com/CmoZyQv.png" width="300" />
 
@@ -8,13 +8,15 @@ Automatically overlay a "New Season" banner on Plex show posters when a new seas
 
 ## 🎯 What It Does
 
-- **Smart Detection**: Scans your Plex library for shows with 2+ seasons where the latest season aired within the last 20 days
+- **Smart Detection**: Scans your Plex library for shows with 2+ seasons where the latest season aired within the last 21 days
 - **Automatic Overlay**: Adds a custom "New Season" banner to both show and season posters
-- **Preview Mode**: Generates preview images before making changes (enabled by default)
-- **Intelligent Cleanup**: Automatically removes overlays when seasons are no longer "new" (20+ days old)
-- **Comprehensive Logging**: Tracks all changes in `overlaid_log.json` with timestamps
+- **Preview Mode**: Generates preview images before making changes (toggle with `PREVIEW_MODE`)
+- **Intelligent Cleanup**: Automatically removes overlays when seasons are no longer "new" (21+ days old)
+- **Preview-to-Live Conversion**: Seamlessly converts preview overlays to live overlays when switching modes
+- **Comprehensive Logging**: Tracks all changes in `overlaid_log.json` with timestamps and mode tracking
 - **Skip Processing**: Automatically skips already-processed shows to avoid duplicates
-- **Error Handling**: Robust error handling with detailed logging for troubleshooting
+- **Robust Error Handling**: Enhanced error handling with detailed logging and graceful fallbacks
+- **Safe Filename Handling**: Sanitizes filenames to prevent filesystem issues
 
 ---
 
@@ -55,8 +57,7 @@ PLEX_URL = 'http://192.168.1.100:32400'  # Your Plex server URL
 PLEX_TOKEN = 'YOUR_PLEX_TOKEN_HERE'       # Your Plex token
 OVERLAY_PATH = 'new_season.png'           # Path to your overlay image
 LOG_FILE = 'overlaid_log.json'            # Log file location
-PREVIEW_MODE = True                       # Enable preview mode (recommended)
-CLEANUP_MODE = False                      # Enable cleanup mode
+PREVIEW_MODE = False                      # Toggle preview/live mode
 PREVIEW_FOLDER = 'preview_posters'        # Preview images folder
 ```
 
@@ -74,6 +75,7 @@ Place your custom overlay image in the root folder and name it `new_season.png`
 
 ### First Run (Preview Mode)
 ```bash
+# Set PREVIEW_MODE = True in the script
 python overlay_season_preview.py
 ```
 
@@ -85,27 +87,43 @@ python overlay_season_preview.py
 
 ### Apply Changes (Live Mode)
 ```bash
-# Edit script: set PREVIEW_MODE = False
+# Set PREVIEW_MODE = False in the script
 python overlay_season_preview.py
 ```
 
 **What happens:**
 - Applies overlays to show and season posters in Plex
-- Saves backup preview images
+- Converts existing preview overlays to live overlays
+- Saves backup preview images in preview folder
 - Updates `overlaid_log.json` with changes
 - Skips already-processed shows
 
-### Cleanup Old Overlays
-```bash
-# Edit script: set CLEANUP_MODE = True
-python overlay_season_preview.py
-```
+### Automatic Cleanup
+The script now automatically handles cleanup by:
+- Checking all previously overlaid shows
+- Removing overlays from seasons older than 21 days
+- Restoring original posters automatically
+- Updating log file to reflect changes
 
-**What happens:**
-- Checks all previously overlaid shows
-- Removes overlays from seasons older than 20 days
-- Restores original posters automatically
-- Updates log file
+---
+
+## 🔧 Key Features & Improvements
+
+### Smart Processing Logic
+- **Eligibility Check**: Only processes shows with 2+ seasons where latest season aired within 21 days
+- **Duplicate Prevention**: Skips shows that already have overlays applied
+- **Preview-to-Live Conversion**: Automatically converts preview overlays to live when switching modes
+- **Inaccessible Show Cleanup**: Removes log entries for shows that can no longer be accessed
+
+### Enhanced Error Handling
+- **Graceful Fallbacks**: Multiple methods for poster reset if primary method fails
+- **Detailed Logging**: Comprehensive error reporting with stack traces
+- **Safe File Operations**: Proper temp file cleanup and error recovery
+
+### Improved File Management
+- **Filename Sanitization**: Removes invalid characters from filenames
+- **Temporary File Cleanup**: Automatically removes temp files after processing
+- **Log File Validation**: Handles corrupted log files gracefully
 
 ---
 
@@ -117,69 +135,43 @@ plex-new-season-overlay/
 ├── new_season.png               # Your overlay image
 ├── requirements.txt             # Python dependencies
 ├── overlaid_log.json           # Processing log (auto-generated)
-├── preview_posters/            # Preview images (auto-generated)
+├── preview_posters/            # Preview & temp images (auto-generated)
 │   ├── Show_Name_show.png
 │   ├── Show_Name_season.png
-│   └── ...
+│   └── temp_files...
 └── README.md                   # This file
 ```
 
 ---
 
-## 🔧 Advanced Configuration
+## 📊 Log File Format
 
-### Customizing Detection Rules
+The `overlaid_log.json` tracks each processed show:
 
-```python
-# Change the "new season" timeframe (default: 20 days)
-cutoff = now - timedelta(days=30)  # 30 days instead of 20
-
-# Modify overlay size and position
-new_width = int(width * 0.75)     # 75% instead of 85%
-y = height - new_height - 50      # Add 50px margin from bottom
+```json
+{
+  "12345": {
+    "title": "Example Show",
+    "timestamp": "2025-01-15T14:30:00",
+    "preview_only": false
+  }
+}
 ```
 
-### Multiple Overlay Images
-
-You can create different overlays for different scenarios:
-
-```python
-# Use different overlays based on show type or season number
-if 'Comedy' in show.genres:
-    overlay_path = 'comedy_new_season.png'
-elif latest_season.index > 5:
-    overlay_path = 'veteran_show_overlay.png'
-else:
-    overlay_path = 'new_season.png'
-```
+**Fields:**
+- `title`: Show name
+- `timestamp`: When overlay was applied
+- `preview_only`: Whether it's a preview or live overlay
 
 ---
 
-## 🧹 Cleanup & Maintenance
+## 🧹 Maintenance & Troubleshooting
 
-### Automatic Cleanup
-The script includes intelligent cleanup that:
-- Runs when `CLEANUP_MODE = True`
-- Checks all previously overlaid shows
-- Removes overlays from seasons older than 20 days
-- Restores original posters automatically
-
-### Manual Cleanup
-To manually remove overlays:
-1. Go to your Plex web interface
-2. Navigate to the show → Edit → Poster tab
-3. Select "Reset to Default" or choose original poster
-4. Save changes
-
-### Log Management
-The `overlaid_log.json` file tracks:
-- Show title and rating key
-- Timestamp of overlay application
-- Preview vs live mode status
-
----
-
-## 🐛 Troubleshooting
+### Automatic Maintenance
+The script handles maintenance automatically:
+- Removes overlays from shows that no longer qualify
+- Cleans up inaccessible show entries from the log
+- Converts preview overlays to live overlays when mode changes
 
 ### Common Issues
 
@@ -197,10 +189,10 @@ pip install plexapi Pillow requests
 - Verify `new_season.png` exists in the script directory
 - Check file permissions
 
-**Overlays not appearing**
-- Run in preview mode first to verify detection
-- Check Plex cache (restart Plex server if needed)
-- Verify shows meet criteria (2+ seasons, new season within 20 days)
+**Poster reset issues**
+- The script uses multiple fallback methods for poster reset
+- If posters don't reset, try restarting your Plex server
+- Check Plex logs for additional error information
 
 ### Debug Mode
 Add this to the script for detailed logging:
@@ -211,18 +203,46 @@ logging.basicConfig(level=logging.DEBUG)
 
 ---
 
+## 🔧 Advanced Configuration
+
+### Customizing Detection Rules
+
+```python
+# Change the "new season" timeframe (default: 21 days)
+cutoff = now - timedelta(days=30)  # 30 days instead of 21
+
+# Modify overlay size and position
+new_width = int(width * 0.75)     # 75% instead of 85%
+y = height - new_height - 50      # Add 50px margin from bottom
+```
+
+### Multiple Overlay Images
+
+```python
+# Use different overlays based on show type or season number
+if 'Comedy' in show.genres:
+    overlay_path = 'comedy_new_season.png'
+elif latest_season.index > 5:
+    overlay_path = 'veteran_show_overlay.png'
+else:
+    overlay_path = 'new_season.png'
+```
+
+---
+
 ## 📊 Performance & Limitations
 
 ### Performance Notes
 - **Speed**: Processes ~100 shows in 30-60 seconds
 - **Resources**: Uses minimal CPU/memory
 - **Network**: Downloads poster images (can be bandwidth-intensive)
+- **Efficiency**: Skips already-processed shows to minimize redundant work
 
 ### Limitations
 - Requires direct network access to Plex server
 - Only works with shows that have air dates
 - Overlay position is fixed (bottom-center)
-- No real-time monitoring (runs on-demand)
+- Depends on Plex API availability
 
 ---
 
@@ -239,9 +259,10 @@ Contributions are welcome! Here's how to help:
 ### Ideas for Contributions
 - Web interface for configuration
 - Multiple overlay templates
-- Real-time monitoring
+- Real-time monitoring with file watchers
 - Docker containerization
 - Integration with other media management tools
+- Custom overlay positioning options
 
 ---
 
@@ -279,7 +300,16 @@ If this script saves you time and enhances your Plex experience, consider suppor
 
 ## 📝 Changelog
 
-### v2.0.0 (Current)
+### v2.1.0 (Current)
+- ✅ Enhanced error handling and recovery
+- ✅ Improved poster reset functionality with multiple fallback methods
+- ✅ Added filename sanitization for cross-platform compatibility
+- ✅ Automatic preview-to-live conversion
+- ✅ Better inaccessible show cleanup
+- ✅ Improved temporary file management
+- ✅ Enhanced logging with detailed error reporting
+
+### v2.0.0
 - ✅ Added automatic cleanup functionality
 - ✅ Improved poster reset mechanism
 - ✅ Enhanced error handling and logging
