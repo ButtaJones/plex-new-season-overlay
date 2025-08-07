@@ -6,7 +6,7 @@ Automatically overlay a "New Season" banner on Plex show posters when a new seas
 
 ---
 
-## 🎯 What It Does
+## What It Does
 
 - **Smart Detection**: Scans your Plex library for shows with 2+ seasons where the latest season aired within the last 21 days
 - **Automatic Overlay**: Adds a custom "New Season" banner to both show and season posters
@@ -20,7 +20,7 @@ Automatically overlay a "New Season" banner on Plex show posters when a new seas
 
 ---
 
-## 🧰 Requirements
+## Requirements
 
 - **Python 3.7+**
 - **Plex Media Server** (PlexPass not required)
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 ---
 
-## ⚙️ Setup & Configuration
+## Setup & Configuration
 
 ### 1. Get Your Plex Token
 1. Open Plex Web App
@@ -71,7 +71,7 @@ Place your custom overlay image in the root folder and name it `new_season.png`
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ### First Run (Preview Mode)
 ```bash
@@ -107,7 +107,7 @@ The script now automatically handles cleanup by:
 
 ---
 
-## 🔧 Key Features & Improvements
+## Key Features & Improvements
 
 ### Smart Processing Logic
 - **Eligibility Check**: Only processes shows with 2+ seasons where latest season aired within 21 days
@@ -127,7 +127,7 @@ The script now automatically handles cleanup by:
 
 ---
 
-## 📁 File Structure
+## File Structure
 
 ```
 plex-new-season-overlay/
@@ -144,7 +144,7 @@ plex-new-season-overlay/
 
 ---
 
-## 📊 Log File Format
+## Log File Format
 
 The `overlaid_log.json` tracks each processed show:
 
@@ -165,7 +165,7 @@ The `overlaid_log.json` tracks each processed show:
 
 ---
 
-## 🧹 Maintenance & Troubleshooting
+## Maintenance & Troubleshooting
 
 ### Automatic Maintenance
 The script handles maintenance automatically:
@@ -230,7 +230,7 @@ else:
 
 ---
 
-## 📊 Performance & Limitations
+## Performance & Limitations
 
 ### Performance Notes
 - **Speed**: Processes ~100 shows in 30-60 seconds
@@ -246,7 +246,7 @@ else:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how to help:
 
@@ -266,7 +266,7 @@ Contributions are welcome! Here's how to help:
 
 ---
 
-## 📄 License
+## License
 
 MIT License - free for personal and commercial use.
 
@@ -274,22 +274,18 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
-## ☕ Support This Project
+## Support This Project
 
 If this script saves you time and enhances your Plex experience, consider supporting future development:
 
 ### 💳 Donation Options
 - **[Buy Me a Coffee](https://buymeacoffee.com/butta)** - Clean, PayPal-free option 
 - **[Ko-fi](https://ko-fi.com/buttajones)** - Another trusted platform
-- **Bitcoin**: `bc1qexampleaddresshere` (coming soon)
-- **Ethereum**: `0xexampleaddresshere` (coming soon)
-- **Interac e-Transfer** (Canadians): Contact via GitHub
 
-> 🇨🇦 **Canadian-friendly**: These options work great for Canadian donors who want to avoid PayPal fees!
 
 ---
 
-## 👤 Author
+## Author
 
 **Butta Jones**  
 - GitHub: [@buttajones](https://github.com/buttajones)
@@ -298,7 +294,7 @@ If this script saves you time and enhances your Plex experience, consider suppor
 
 ---
 
-## 📝 Changelog
+## Changelog
 
 ### v2.1.0 (Current)
 - ✅ Enhanced error handling and recovery
@@ -324,7 +320,7 @@ If this script saves you time and enhances your Plex experience, consider suppor
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **PlexAPI** developers for the excellent Python library
 - **Plex** community for feedback and testing
