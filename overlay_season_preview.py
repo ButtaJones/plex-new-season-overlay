@@ -11,7 +11,7 @@ import requests
 
 # === CONFIGURATION ===
 PLEX_URL = 'http://192.168.1.23:32400'  # Your Plex server URL
-PLEX_TOKEN = ''       # Your Plex token
+PLEX_TOKEN = 'YOUR_PLEX_TOKEN_HERE'       # Your Plex token
 OVERLAY_PATH = 'new_season.png'  # your overlay file
 LOG_FILE = 'overlaid_log.json'
 PREVIEW_MODE = True
