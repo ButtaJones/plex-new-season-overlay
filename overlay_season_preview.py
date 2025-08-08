@@ -2,7 +2,7 @@ import os
 import json
 import re
 import time
-import sys  # NEW: Import sys to read command-line arguments
+import sys
 import tempfile
 from datetime import datetime, timedelta
 from plexapi.server import PlexServer
@@ -12,10 +12,10 @@ import requests
 
 # === CONFIGURATION ===
 PLEX_URL = 'http://192.168.1.23:32400'  # Your Plex server URL
-PLEX_TOKEN = 'PLEX_TOKEN_HERE'       # Your Plex token
+PLEX_TOKEN = 'YOUR_PLEX_TOKEN_HERE'       # Your Plex token
 OVERLAY_PATH = 'new_season.png'  # your overlay file
 LOG_FILE = 'overlaid_log.json'
-PREVIEW_MODE = False
+PREVIEW_MODE = False # Set to False to run revert or apply overlays live
 PREVIEW_FOLDER = 'preview_posters'
 RUN_SCHEDULE_HOURS = 24  # Hours to wait between runs. Set to 0 to run only once.
 
@@ -80,18 +80,20 @@ def reset_poster(item):
         print(f"  ❌ Failed to perform generic reset for {item.title}: {e}")
     return False
 
-# NEW: More precise revert function using saved URL
 def revert_to_original_poster(item, original_url):
     """Reverts a poster to a specific previously saved poster URL."""
     try:
-        # Find the specific poster from the list of available posters
+        if not original_url:
+            print(f"  ⚠️  Could not find original poster URL for '{item.title}'. Falling back to reset.")
+            return reset_poster(item)
+
         for poster in item.posters():
             if poster.key == original_url:
                 item.setPoster(poster)
                 print(f"  ✅ Reverted poster for '{item.title}' to original.")
                 return True
-        # If the exact poster wasn't found, fall back to the generic reset
-        print(f"  ⚠️  Could not find original poster URL for '{item.title}'. Falling back to reset.")
+
+        print(f"  ⚠️  Could not find specific poster URL in Plex for '{item.title}'. Falling back to reset.")
         return reset_poster(item)
     except Exception as e:
         print(f"  ❌ Error reverting poster for '{item.title}': {e}. Falling back to reset.")
@@ -99,23 +101,20 @@ def revert_to_original_poster(item, original_url):
 
 def should_have_overlay(show):
     try:
-        if len(show.seasons()) < 2:
-            return False
+        if len(show.seasons()) < 2: return False
         valid_seasons = [s for s in show.seasons() if s.index is not None]
-        if not valid_seasons:
-            return False
+        if not valid_seasons: return False
         latest_season = max(valid_seasons, key=lambda s: s.index)
         episode1 = next((ep for ep in latest_season.episodes() if ep.index == 1), None)
-        if not episode1 or not episode1.originallyAvailableAt:
-            return False
-        if episode1.originallyAvailableAt < cutoff:
-            return False
+        if not episode1 or not episode1.originallyAvailableAt: return False
+        if episode1.originallyAvailableAt < cutoff: return False
         return True
     except Exception as e:
         print(f"Error checking overlay eligibility for {show.title}: {e}")
         return False
 
 def process_show_overlay(show, overlaid_data):
+    """Apply overlay to a show"""
     try:
         print(f"Processing: {show.title}")
         
@@ -141,7 +140,6 @@ def process_show_overlay(show, overlaid_data):
                 season_original_poster = Image.open(io.BytesIO(season_response.content))
                 season_poster_result = apply_overlay(season_original_poster, overlay_img)
 
-        # MODIFIED: Logic for preview vs. live mode
         safe_title = sanitize_filename(show.title)
         show_rating_key = str(show.ratingKey)
 
@@ -154,39 +152,31 @@ def process_show_overlay(show, overlaid_data):
                 season_poster_result.save(season_preview_path)
                 print(f"Season preview saved: {season_preview_path}")
             
-            overlaid_data[show_rating_key] = {
-                "title": show.title,
-                "timestamp": now.isoformat(),
-                "preview_only": True
-            }
+            overlaid_data[show_rating_key] = { "title": show.title, "timestamp": now.isoformat(), "preview_only": True }
         else:
-            # NEW: Store original poster URLs before uploading
             original_show_poster_url = show.thumb
             original_season_poster_url = latest_season.thumb if latest_season else None
 
-            # Upload show poster
             temp_path = os.path.join(PREVIEW_FOLDER, f"temp_{safe_title}_show.png")
             result.save(temp_path)
             try:
                 show.uploadPoster(filepath=temp_path)
                 print(f"Show poster uploaded for: {show.title}")
                 
-                # Upload season poster
                 if season_poster_result:
                     season_temp_path = os.path.join(PREVIEW_FOLDER, f"temp_{safe_title}_season.png")
                     season_poster_result.save(season_temp_path)
                     try:
                         latest_season.uploadPoster(filepath=season_temp_path)
                         print(f"Season poster uploaded for: {show.title} - Season {latest_season.index}")
+                    except Exception as season_e:
+                        print(f"  ⚠️  WARNING: Failed to upload SEASON poster for '{show.title}': {season_e}")
                     finally:
                         if os.path.exists(season_temp_path):
                             os.remove(season_temp_path)
                 
-                # MODIFIED: Save new info to the log
                 overlaid_data[show_rating_key] = {
-                    "title": show.title,
-                    "timestamp": now.isoformat(),
-                    "preview_only": False,
+                    "title": show.title, "timestamp": now.isoformat(), "preview_only": False,
                     "original_show_poster_url": original_show_poster_url,
                     "original_season_poster_url": original_season_poster_url
                 }
@@ -210,20 +200,14 @@ def remove_show_overlay(show, overlaid_data):
         if PREVIEW_MODE:
             print(f"[Preview] Would remove overlay from: {show.title}")
         else:
-            if not log_entry:
-                print(f"  -> No log entry found for '{show.title}'. Performing generic reset.")
-                reset_poster(show)
-            else:
-                # Revert show poster
-                revert_to_original_poster(show, log_entry.get("original_show_poster_url"))
-                
-                # Revert season poster if it was changed
-                if log_entry.get("original_season_poster_url"):
-                    seasons = show.seasons()
-                    valid_seasons = [s for s in seasons if s.index is not None]
-                    latest_season = max(valid_seasons, key=lambda s: s.index) if valid_seasons else None
-                    if latest_season:
-                        revert_to_original_poster(latest_season, log_entry.get("original_season_poster_url"))
+            revert_to_original_poster(show, log_entry.get("original_show_poster_url") if log_entry else None)
+            
+            if log_entry and log_entry.get("original_season_poster_url"):
+                seasons = show.seasons()
+                valid_seasons = [s for s in seasons if s.index is not None]
+                latest_season = max(valid_seasons, key=lambda s: s.index) if valid_seasons else None
+                if latest_season:
+                    revert_to_original_poster(latest_season, log_entry.get("original_season_poster_url"))
 
         if show_rating_key in overlaid_data:
             del overlaid_data[show_rating_key]
@@ -232,7 +216,6 @@ def remove_show_overlay(show, overlaid_data):
         print(f"Failed to remove overlay from '{show.title}': {e}")
         return False
 
-# NEW: Function to handle reverting all posters
 def revert_all_posters(plex):
     """Iterates through the log file and reverts all posters to their originals."""
     print("--- Starting Revert Process ---")
@@ -246,42 +229,34 @@ def revert_all_posters(plex):
         return
 
     reverted_count = 0
-    items_to_remove_from_log = []
     
-    for rating_key, data in overlaid_data.items():
+    # MODIFIED: Iterate over a list copy of the items to prevent RuntimeError.
+    # This is the critical fix for the crash.
+    for rating_key, data in list(overlaid_data.items()):
         try:
             show = plex.fetchItem(f"/library/metadata/{rating_key}")
-            print(f"Reverting: {show.title}")
+            print(f"Reverting: {data.get('title', rating_key)}")
             
-            # Use the more precise remove_show_overlay function which handles all logic
             if remove_show_overlay(show, overlaid_data):
                 reverted_count += 1
-                items_to_remove_from_log.append(rating_key)
-
         except Exception as e:
-            print(f"Could not fetch or revert item with key {rating_key} ('{data.get('title', 'Unknown')}'): {e}")
-            # If item not found, it should be removed from the log
-            items_to_remove_from_log.append(rating_key)
+            print(f"Could not fetch item with key {rating_key} ('{data.get('title', 'Unknown')}'): {e}")
+            print("  -> Removing stale entry from log.")
+            if rating_key in overlaid_data:
+                del overlaid_data[rating_key]
 
-    # Clean up the log file
-    final_log_data = load_log_data()
-    for key in items_to_remove_from_log:
-        if key in final_log_data:
-            del final_log_data[key]
-    
-    save_log(final_log_data)
+    save_log(overlaid_data)
     print(f"\n--- Revert Complete ---")
-    print(f"Reverted posters for {reverted_count} shows.")
+    print(f"  ✅ Reverted posters for {reverted_count} shows.")
 
 def run_overlay_update(plex):
-    """Connects to Plex and runs the main overlay update logic."""
+    """Runs the main overlay update logic."""
     global now, cutoff
     now = datetime.now()
     cutoff = now - timedelta(days=10)
     
     print(f"\n--- Starting run at {now.strftime('%Y-%m-%d %H:%M:%S')} ---")
-    if PREVIEW_MODE:
-        print("--- RUNNING IN PREVIEW MODE ---")
+    if PREVIEW_MODE: print("--- RUNNING IN PREVIEW MODE ---")
 
     overlaid_data = load_log_data()
     print("🔍 Scanning library for shows...")
@@ -296,26 +271,20 @@ def run_overlay_update(plex):
                 print(f"⚠️  Could not process section '{section.title}': {e}")
 
     print(f"Found {len(should_have_overlays)} shows that should have overlays.")
-
     processed_count, removed_count = 0, 0
     
-    # Process additions
     for section in plex.library.sections():
         if section.type == 'show':
             try:
                 for show in section.all():
                     rating_key = str(show.ratingKey)
                     if rating_key in should_have_overlays:
-                        if rating_key not in overlaid_data:
-                            if process_show_overlay(show, overlaid_data):
-                                processed_count += 1
-                        elif overlaid_data[rating_key].get("preview_only", False) and not PREVIEW_MODE:
+                        if rating_key not in overlaid_data or (overlaid_data[rating_key].get("preview_only", False) and not PREVIEW_MODE):
                             if process_show_overlay(show, overlaid_data):
                                 processed_count += 1
             except Exception as e:
                 print(f"⚠️  Could not process section '{section.title}' for additions: {e}")
 
-    # Process removals
     shows_to_remove = []
     for rating_key in list(overlaid_data.keys()):
         if rating_key not in should_have_overlays:
@@ -327,7 +296,7 @@ def run_overlay_update(plex):
                 del overlaid_data[rating_key]
                 removed_count += 1
 
-    print(f"Removing overlays from {len(shows_to_remove)} shows...")
+    if shows_to_remove: print(f"Removing overlays from {len(shows_to_remove)} shows...")
     for show in shows_to_remove:
         if remove_show_overlay(show, overlaid_data):
             removed_count += 1
@@ -348,7 +317,6 @@ if __name__ == "__main__":
         print(f"❌ Could not connect to Plex server: {e}")
         exit(1)
 
-    # NEW: Check for command-line arguments
     if '--revert-all' in sys.argv:
         revert_all_posters(plex)
         print("\nScript finished.")
